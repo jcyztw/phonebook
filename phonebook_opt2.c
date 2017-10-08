@@ -4,22 +4,27 @@
 
 #include "phonebook_opt2.h"
 
-entry *findName(char lastName[], entry *pHead)
+entry *findName(char lastName[], tableEntry table[])
 {
-    while (pHead != NULL) {
-        if (strcasecmp(lastName, pHead->lastName) == 0)
-            return pHead;
-        pHead = pHead->pNext;
-    }
-    return NULL;
+    return &table[hash(lastName)].contactInfo;
 }
 
-entry *append(char lastName[], entry *e)
+void append(char lastName[], tableEntry table[])
 {
-    e->pNext = (entry *) malloc(sizeof(entry));
-    e = e->pNext;
-    strcpy(e->lastName, lastName);
-    e->pNext = NULL;
+    unsigned int index = hash(lastName);
 
-    return e;
+    strcpy(table[index].contactInfo.lastName, lastName);
+}
+
+unsigned int hash(char key[])
+{
+    unsigned int tableIndex = 0;
+    char *lastName = key;
+
+    while(*lastName != '\0') {
+        tableIndex = tableIndex + *lastName++;
+    }
+    tableIndex %= HASH_TABLE_SIZE;
+
+    return tableIndex;
 }
