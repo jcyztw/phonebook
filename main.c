@@ -8,6 +8,8 @@
 
 #ifdef OPT
 #define OUT_FILE "opt.txt"
+#elif defined(OPT2)
+#define OUT_FILE "opt2.txt"
 #else
 #define OUT_FILE "orig.txt"
 #endif
