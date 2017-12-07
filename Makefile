@@ -3,8 +3,9 @@ CFLAGS_common ?= -Wall -std=gnu99
 CFLAGS_orig = -O0
 CFLAGS_opt  = -O0
 CFLAGS_opt2 = -O0
+CFLAGS_mpool = -O0
 
-EXEC = phonebook_orig phonebook_opt phonebook_opt2
+EXEC = phonebook_orig phonebook_opt phonebook_opt2 phonebook_mpool
 
 GIT_HOOKS := .git/hooks/applied
 .PHONY: all
@@ -31,6 +32,11 @@ phonebook_opt2: $(SRCS_common) phonebook_opt2.c phonebook_opt2.h
 	-DIMPL="\"$@.h\"" -o $@ \
 	$(SRCS_common) $@.c
 
+phonebook_mpool: $(SRCS_common) phonebook_mpool.c phonebook_mpool.h
+	$(CC) $(CFLAGS_common) $(CFLAGS_mpool) \
+	-DIMPL="\"$@.h\"" -o $@ \
+	$(SRCS_common) $@.c
+
 run: $(EXEC)
 	echo 3 | sudo tee /proc/sys/vm/drop_caches
 	watch -d -t "./phonebook_orig && echo 3 | sudo tee /proc/sys/vm/drop_caches"
@@ -45,6 +51,9 @@ cache-test: $(EXEC)
 	perf stat --repeat 100 \
 		-e cache-misses,cache-references,instructions,cycles \
 		./phonebook_opt2
+	perf stat --repeat 100 \
+		-e cache-misses,cache-references,instructions,cycles \
+		./phonebook_mpool
 
 output.txt: cache-test calculate
 	./calculate
@@ -58,4 +67,4 @@ calculate: calculate.c
 .PHONY: clean
 clean:
 	$(RM) $(EXEC) *.o perf.* \
-	      	calculate orig.txt opt.txt output.txt runtime.png opt2.txt
+	      	calculate orig.txt opt.txt output.txt runtime.png opt2.txt mpool.txt

@@ -10,6 +10,8 @@
 #define OUT_FILE "opt.txt"
 #elif defined(OPT2)
 #define OUT_FILE "opt2.txt"
+#elif defined(MPOOL)
+#define OUT_FILE "mpool.txt"
 #else
 #define OUT_FILE "orig.txt"
 #endif
@@ -37,6 +39,16 @@ int main(int argc, char *argv[])
     struct timespec start, end;
     double cpu_time1, cpu_time2;
 
+#if defined(OPT2) || defined(MPOOL)
+    int hash_slot[HASH_TABLE_SIZE];
+    memset(hash_slot, 0, sizeof(int) * HASH_TABLE_SIZE);
+    unsigned slot_num;
+#endif
+
+#if defined(MPOOL)
+    create_mem_pool(sizeof(entry) * 400000);
+#endif
+
     /* check file opening */
     fp = fopen(DICT_FILE, "r");
     if (fp == NULL) {
@@ -45,8 +57,13 @@ int main(int argc, char *argv[])
     }
 
     /* build the entry */
-#ifdef OPT2
-    printf("size of entry : %lu bytes\n", sizeof(tableEntry));
+#if defined(OPT2) || defined(MPOOL)
+    entry *pHead, *e[HASH_TABLE_SIZE];
+    pHead = (entry *) malloc(sizeof(entry) * HASH_TABLE_SIZE);
+    for (i = 0; i < HASH_TABLE_SIZE; i++) {
+        e[i] = &pHead[i];
+        e[i]->pNext = NULL;
+    }
 #else
     entry *pHead, *e;
     pHead = (entry *) malloc(sizeof(entry));
@@ -55,8 +72,10 @@ int main(int argc, char *argv[])
     e->pNext = NULL;
 #endif
 
-#ifndef OPT2
 #if defined(__GNUC__)
+#if defined(OPT2) || defined(MPOOL)
+    __builtin___clear_cache((char *) pHead, (char *) pHead + sizeof(entry) * HASH_TABLE_SIZE);
+#else
     __builtin___clear_cache((char *) pHead, (char *) pHead + sizeof(entry));
 #endif
 #endif
@@ -66,8 +85,10 @@ int main(int argc, char *argv[])
             i++;
         line[i - 1] = '\0';
         i = 0;
-#ifdef OPT2
-        append(line, hashTable);
+#if defined(OPT2) || defined(MPOOL)
+        slot_num = hash(line);
+        hash_slot[slot_num]++;
+        e[slot_num] = append(line, e[slot_num]);
 #else
         e = append(line, e);
 #endif
@@ -77,32 +98,41 @@ int main(int argc, char *argv[])
 
     /* close file as soon as possible */
     fclose(fp);
-#ifndef OPT2
+
+#if defined(OPT2) || defined(MPOOL)
+    for (i = 0; i < HASH_TABLE_SIZE; i++)
+        e[i] = &pHead[i];
+#else
     e = pHead;
 #endif
+
     /* the givn last name to find */
     char input[MAX_LAST_NAME_SIZE] = "zyxel";
-#ifndef OPT2
-    e = pHead;
-
+#if defined(OPT2) || defined(MPOOL)
+    slot_num = hash(input);
+    assert(findName(input, e[slot_num]) &&
+           "Did you implement findName() in " IMPL "?");
+    assert(0 == strcmp(findName(input, e[slot_num])->lastName, "zyxel"));
+#else
     assert(findName(input, e) &&
            "Did you implement findName() in " IMPL "?");
     assert(0 == strcmp(findName(input, e)->lastName, "zyxel"));
+#endif
 
 #if defined(__GNUC__)
+#if defined(OPT2) || defined(MPOOL)
+    __builtin___clear_cache((char *) pHead, (char *) pHead + sizeof(entry) * HASH_TABLE_SIZE);
+#else
     __builtin___clear_cache((char *) pHead, (char *) pHead + sizeof(entry));
 #endif
-#else
-    assert(findName(input, hashTable) &&
-           "Did you implement findName() in " IMPL "?");
-    assert(0 == strcmp(findName(input, hashTable)->lastName, "zyxel"));
 #endif
+
     /* compute the execution time */
     clock_gettime(CLOCK_REALTIME, &start);
-#ifndef OPT2
-    findName(input, e);
+#if defined(OPT2) || defined(MPOOL)
+    findName(input, e[slot_num]);
 #else
-    findName(input, hashTable);
+    findName(input, e);
 #endif
     clock_gettime(CLOCK_REALTIME, &end);
     cpu_time2 = diff_in_second(start, end);
@@ -113,9 +143,24 @@ int main(int argc, char *argv[])
 
     printf("execution time of append() : %lf sec\n", cpu_time1);
     printf("execution time of findName() : %lf sec\n", cpu_time2);
-#ifndef OPT2
-    if (pHead->pNext) free(pHead->pNext);
+
+#if defined(OPT2)
+    for (i = 0; i < HASH_TABLE_SIZE; i++) {
+        free_list(&pHead[i]);
+    }
+#elif defined(MPOOL)
+    free_mem_pool();
     free(pHead);
+#else
+    //if (pHead->pNext) free(pHead->pNext);
+    //free(pHead);
+    entry *tmp = pHead;
+    while (tmp != NULL) {
+        pHead = pHead->pNext;
+        free(tmp);
+        tmp = pHead;
+    }
 #endif
+
     return 0;
 }

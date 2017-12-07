@@ -1,7 +1,7 @@
 #ifndef _PHONEBOOK_H
 #define _PHONEBOOK_H
 
-#define OPT2 1
+#define MPOOL 1
 
 #define MAX_LAST_NAME_SIZE 16
 #define HASH_TABLE_SIZE 3701
@@ -29,5 +29,17 @@ entry *append(char lastName[], entry *e);
 
 unsigned int hash(char key[]);
 void free_list(entry *e);
+
+// memory pool
+typedef struct __POOL {
+    void *next;
+    void *end;
+} pool;
+
+pool *pool_create(size_t size);
+void *pool_alloc(pool *p, size_t size);
+void pool_destroy(pool *p);
+void create_mem_pool(size_t size);
+void free_mem_pool();
 
 #endif
