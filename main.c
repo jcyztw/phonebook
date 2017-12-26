@@ -12,6 +12,8 @@
 #define OUT_FILE "opt2.txt"
 #elif defined(MPOOL)
 #define OUT_FILE "mpool.txt"
+#elif defined(FUZZY)
+#define OUT_FILE "fuzzy.txt"
 #else
 #define OUT_FILE "orig.txt"
 #endif
@@ -39,13 +41,17 @@ int main(int argc, char *argv[])
     struct timespec start, end;
     double cpu_time1, cpu_time2;
 
-#if defined(OPT2) || defined(MPOOL)
+#if defined(OPT2) || defined(MPOOL) || defined(FUZZY)
     int hash_slot[HASH_TABLE_SIZE];
     memset(hash_slot, 0, sizeof(int) * HASH_TABLE_SIZE);
     unsigned slot_num;
 #endif
 
-#if defined(MPOOL)
+#if defined(FUZZY)
+    char *fuzzyInput = argv[1];
+#endif
+
+#if defined(MPOOL) || defined(FUZZY)
     create_mem_pool(sizeof(entry) * 400000);
 #endif
 
@@ -57,7 +63,7 @@ int main(int argc, char *argv[])
     }
 
     /* build the entry */
-#if defined(OPT2) || defined(MPOOL)
+#if defined(OPT2) || defined(MPOOL) || defined(FUZZY)
     entry *pHead, *e[HASH_TABLE_SIZE];
     pHead = (entry *) malloc(sizeof(entry) * HASH_TABLE_SIZE);
     for (i = 0; i < HASH_TABLE_SIZE; i++) {
@@ -73,7 +79,7 @@ int main(int argc, char *argv[])
 #endif
 
 #if defined(__GNUC__)
-#if defined(OPT2) || defined(MPOOL)
+#if defined(OPT2) || defined(MPOOL) || defined(FUZZY)
     __builtin___clear_cache((char *) pHead, (char *) pHead + sizeof(entry) * HASH_TABLE_SIZE);
 #else
     __builtin___clear_cache((char *) pHead, (char *) pHead + sizeof(entry));
@@ -85,7 +91,7 @@ int main(int argc, char *argv[])
             i++;
         line[i - 1] = '\0';
         i = 0;
-#if defined(OPT2) || defined(MPOOL)
+#if defined(OPT2) || defined(MPOOL) || defined(FUZZY)
         slot_num = hash(line);
         hash_slot[slot_num]++;
         e[slot_num] = append(line, e[slot_num]);
@@ -99,16 +105,26 @@ int main(int argc, char *argv[])
     /* close file as soon as possible */
     fclose(fp);
 
-#if defined(OPT2) || defined(MPOOL)
+#if defined(OPT2) || defined(MPOOL) || defined(FUZZY)
     for (i = 0; i < HASH_TABLE_SIZE; i++)
         e[i] = &pHead[i];
 #else
     e = pHead;
 #endif
 
+#if defined(FUZZY)
+    printf("similarity = %d\n", SIMILARITY);
+    printf("last names which edit distance is less or equal to similarity:\n");
+    i = 0;
+    while (i < HASH_TABLE_SIZE) {
+        if(fuzzySearch(fuzzyInput, e[i], fuzzy_iterative, SIMILARITY))
+            break;
+        i++;
+    }
+#endif
     /* the givn last name to find */
     char input[MAX_LAST_NAME_SIZE] = "zyxel";
-#if defined(OPT2) || defined(MPOOL)
+#if defined(OPT2) || defined(MPOOL) || defined(FUZZY)
     slot_num = hash(input);
     assert(findName(input, e[slot_num]) &&
            "Did you implement findName() in " IMPL "?");
@@ -120,7 +136,7 @@ int main(int argc, char *argv[])
 #endif
 
 #if defined(__GNUC__)
-#if defined(OPT2) || defined(MPOOL)
+#if defined(OPT2) || defined(MPOOL) || defined(FUZZY)
     __builtin___clear_cache((char *) pHead, (char *) pHead + sizeof(entry) * HASH_TABLE_SIZE);
 #else
     __builtin___clear_cache((char *) pHead, (char *) pHead + sizeof(entry));
@@ -129,7 +145,7 @@ int main(int argc, char *argv[])
 
     /* compute the execution time */
     clock_gettime(CLOCK_REALTIME, &start);
-#if defined(OPT2) || defined(MPOOL)
+#if defined(OPT2) || defined(MPOOL) || defined(FUZZY)
     findName(input, e[slot_num]);
 #else
     findName(input, e);
@@ -148,7 +164,7 @@ int main(int argc, char *argv[])
     for (i = 0; i < HASH_TABLE_SIZE; i++) {
         free_list(&pHead[i]);
     }
-#elif defined(MPOOL)
+#elif defined(MPOOL) || defined(FUZZY)
     free_mem_pool();
     free(pHead);
 #else

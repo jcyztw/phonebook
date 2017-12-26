@@ -4,8 +4,9 @@ CFLAGS_orig = -O0
 CFLAGS_opt  = -O0
 CFLAGS_opt2 = -O0
 CFLAGS_mpool = -O0
+CFLAGS_fuzzy = -O0
 
-EXEC = phonebook_orig phonebook_opt phonebook_opt2 phonebook_mpool
+EXEC = phonebook_orig phonebook_opt phonebook_opt2 phonebook_mpool phonebook_fuzzy
 
 GIT_HOOKS := .git/hooks/applied
 .PHONY: all
@@ -34,6 +35,11 @@ phonebook_opt2: $(SRCS_common) phonebook_opt2.c phonebook_opt2.h
 
 phonebook_mpool: $(SRCS_common) phonebook_mpool.c phonebook_mpool.h
 	$(CC) $(CFLAGS_common) $(CFLAGS_mpool) \
+	-DIMPL="\"$@.h\"" -o $@ \
+	$(SRCS_common) $@.c
+
+phonebook_fuzzy: $(SRCS_common) phonebook_fuzzy.c phonebook_fuzzy.h
+	$(CC) $(CFLAGS_common) $(CFLAGS_fuzzy) \
 	-DIMPL="\"$@.h\"" -o $@ \
 	$(SRCS_common) $@.c
 
@@ -67,4 +73,4 @@ calculate: calculate.c
 .PHONY: clean
 clean:
 	$(RM) $(EXEC) *.o perf.* \
-	      	calculate orig.txt opt.txt output.txt runtime.png opt2.txt mpool.txt
+	      	calculate orig.txt opt.txt output.txt runtime.png opt2.txt mpool.txt fuzzy.txt
